@@ -261,10 +261,6 @@ async function rawQuery(sql: string, data: Record<string, any>, name?: string): 
   const params = [];
   const schema = getSchema();
 
-  if (schema) {
-    await client.$executeRawUnsafe(`SET search_path TO "${schema}";`);
-  }
-
   const query = sql?.replaceAll(/\{\{\s*(\w+)(::\w+)?\s*}}/g, (...args) => {
     const [, name, type] = args;
 
@@ -275,10 +271,23 @@ async function rawQuery(sql: string, data: Record<string, any>, name?: string): 
     return `$${params.length}${type ?? ''}`;
   });
 
-  if (process.env.DATABASE_REPLICA_URL && '$replica' in client) {
-    return client.$replica().$queryRawUnsafe(query, ...params);
+  const queryClient =
+    process.env.DATABASE_REPLICA_URL && '$replica' in client ? client.$replica() : client;
+
+  if (schema) {
+    // A separate SET and query can use different connections in transaction
+    // pooling. Pin both operations to the selected primary/replica connection,
+    // and keep the search path local so it cannot leak to the next pool user.
+    const [, result] = await queryClient.$transaction([
+      queryClient.$queryRawUnsafe(
+        "SELECT set_config('search_path', $1, true)",
+        `"${schema.replaceAll('"', '""')}"`,
+      ),
+      queryClient.$queryRawUnsafe(query, ...params),
+    ]);
+    return result;
   }
-  return client.$queryRawUnsafe(query, ...params);
+  return queryClient.$queryRawUnsafe(query, ...params);
 }
 
 async function pagedQuery<T>(model: string, criteria: T, filters?: QueryFilters) {
