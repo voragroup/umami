@@ -1,6 +1,7 @@
 /* eslint-disable no-console */
 import 'dotenv/config';
 import { PrismaPg } from '@prisma/adapter-pg';
+import { databaseConnectionConfig } from '../../src/lib/database-tls.mjs';
 import { type Prisma, PrismaClient } from '../../src/generated/prisma/client.js';
 import { getSessionCountForDay } from './distributions/temporal.js';
 import {
@@ -291,7 +292,7 @@ function createPrismaClient(): PrismaClient {
     );
   }
 
-  const adapter = new PrismaPg({ connectionString: url }, { schema });
+  const adapter = new PrismaPg(databaseConnectionConfig(url, process.env.DATABASE_SSL_CA_FILE), { schema });
 
   return new PrismaClient({
     adapter,

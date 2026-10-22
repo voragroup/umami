@@ -1,6 +1,7 @@
 import { PrismaPg } from '@prisma/adapter-pg';
 import { readReplicas } from '@prisma/extension-read-replicas';
 import debug from 'debug';
+import { databaseConnectionConfig } from './database-tls.mjs';
 import { PrismaClient } from '@/generated/prisma/client';
 import { DEFAULT_PAGE_SIZE, FILTER_COLUMNS, OPERATORS, SESSION_COLUMNS } from './constants';
 import { filtersObjectToArray } from './params';
@@ -382,7 +383,7 @@ function getClient() {
   const logQuery = process.env.LOG_QUERY;
   const schema = getSchema();
 
-  const baseAdapter = new PrismaPg({ connectionString: url }, { schema });
+  const baseAdapter = new PrismaPg(databaseConnectionConfig(url, process.env.DATABASE_SSL_CA_FILE), { schema });
 
   const baseClient = new PrismaClient({
     adapter: baseAdapter,
@@ -400,7 +401,7 @@ function getClient() {
     return baseClient;
   }
 
-  const replicaAdapter = new PrismaPg({ connectionString: replicaUrl }, { schema });
+  const replicaAdapter = new PrismaPg(databaseConnectionConfig(replicaUrl, process.env.DATABASE_SSL_CA_FILE), { schema });
 
   const replicaClient = new PrismaClient({
     adapter: replicaAdapter,
