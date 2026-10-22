@@ -198,6 +198,9 @@ export default withNextIntl({
   },
   basePath,
   output: 'standalone',
+  outputFileTracingIncludes: {
+    '/*': ['./certificates/*.pem'],
+  },
   typescript: {
     ignoreBuildErrors: true,
   },
